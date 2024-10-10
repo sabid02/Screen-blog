@@ -13,19 +13,25 @@ import { HiOutlineExclamationCircle } from "react-icons/hi";
 import { Link } from "react-router-dom";
 import { CircularProgressbar } from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
+import {
+  updateFailure,
+  updateSuccess,
+  updateStart,
+} from "../redux/user/userSlice";
 
 const DashProfile = () => {
   const { currentUser } = useSelector((state) => state.user);
   const [imageFile, setImageFile] = useState(null);
   const [imageFileUrl, setImageFileUrl] = useState(null);
-
-  console.log(imageFile, imageFileUrl);
   const [imageFileUploadProgress, setImageFileUploadProgress] = useState(null);
   const [imageFileUploadError, setImageFileUploadError] = useState(null);
   const [imageFileUploading, setImageFileUploading] = useState(false);
+  const [updateUserSuccess, setUpdateUserSuccess] = useState(null);
   const filePickerRef = useRef();
   const [formData, setFormData] = useState({});
   const [isUploadComplete, setIsUploadComplete] = useState(false);
+  const dispatch = useDispatch();
+  const [updateUserError, setUpdateUserError] = useState(null);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -66,7 +72,7 @@ const DashProfile = () => {
 
         setImageFileUploadProgress(progress.toFixed(0));
         if (progress === 100) {
-          setIsUploadComplete(true); // Mark upload as complete when it reaches 100%
+          setIsUploadComplete(true);
         }
       },
       (error) => {
@@ -89,12 +95,47 @@ const DashProfile = () => {
     );
   };
 
-  const handleChange = () => {};
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.id]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (Object.keys(formData).length === 0) {
+      setUpdateUserError("No change made");
+      return;
+    }
+    if (imageFileUploading) {
+      setImageFileUploading("Please wait for image to upload");
+      return;
+    }
+    try {
+      dispatch(updateStart());
+      const res = await fetch(`/server/user/update/${currentUser._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        dispatch(updateFailure(data.message));
+        setUpdateUserError(data.message);
+      } else {
+        dispatch(updateSuccess(data));
+        setUpdateUserSuccess("User's profile has been updated");
+      }
+    } catch (error) {
+      dispatch(updateFailure(error.message));
+      setUpdateUserError(data.message);
+    }
+  };
 
   return (
     <div className="max-w-lg mx-auto p-3 w-full">
       <h1 className="my-7 text-center font-semibold text-3xl">Profile</h1>
-      <form className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <input
           type="file"
           accept="image/*"
@@ -170,9 +211,32 @@ const DashProfile = () => {
         </Button>
       </form>
       <div className="text-red-500 flex justify-between mt-5">
-        <span className="cursor-pointer">Delete Account</span>
-        <span className="cursor-pointer">Sign Out</span>
+        <Button
+          gradientDuoTone="purpleToRed"
+          outline
+          className="border border-blue-500 text-red-500 hover:bg-gradient-to-r from-purple-500 to-red-500 hover:text-white"
+        >
+          Delete Account
+        </Button>
+
+        <Button
+          gradientDuoTone="purpleToRed"
+          outline
+          className="border border-blue-500 text-red-500 hover:bg-gradient-to-r from-purple-500 to-red-500 hover:text-white"
+        >
+          Sign Out
+        </Button>
       </div>
+      {updateUserSuccess && (
+        <Alert color="success" className="mt-10">
+          {updateUserSuccess}
+        </Alert>
+      )}
+      {updateUserError && (
+        <Alert color="failure" className="mt-10">
+          {updateUserError}
+        </Alert>
+      )}
     </div>
   );
 };
