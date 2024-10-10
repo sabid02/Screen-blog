@@ -11,16 +11,21 @@ import { app } from "../firebase";
 import { useDispatch } from "react-redux";
 import { HiOutlineExclamationCircle } from "react-icons/hi";
 import { Link } from "react-router-dom";
+import { CircularProgressbar } from "react-circular-progressbar";
+import "react-circular-progressbar/dist/styles.css";
 
 const DashProfile = () => {
   const { currentUser } = useSelector((state) => state.user);
   const [imageFile, setImageFile] = useState(null);
   const [imageFileUrl, setImageFileUrl] = useState(null);
+
+  console.log(imageFile, imageFileUrl);
   const [imageFileUploadProgress, setImageFileUploadProgress] = useState(null);
   const [imageFileUploadError, setImageFileUploadError] = useState(null);
   const [imageFileUploading, setImageFileUploading] = useState(false);
   const filePickerRef = useRef();
   const [formData, setFormData] = useState({});
+  const [isUploadComplete, setIsUploadComplete] = useState(false);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -37,8 +42,18 @@ const DashProfile = () => {
   }, [imageFile]);
 
   const uploadImage = async () => {
+    if (imageFile.size > 2 * 1024 * 1024) {
+      setImageFileUploadError(
+        "Could not upload image (File must be less than 2MB)"
+      );
+      setImageFileUploadProgress(null);
+      setImageFile(null);
+      setImageFileUrl(null);
+      return;
+    }
     setImageFileUploading(true);
     setImageFileUploadError(null);
+    setIsUploadComplete(false);
     const storage = getStorage(app);
     const fileName = new Date().getTime() + imageFile.name;
     const storageRef = ref(storage, fileName);
@@ -50,6 +65,9 @@ const DashProfile = () => {
           (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
 
         setImageFileUploadProgress(progress.toFixed(0));
+        if (progress === 100) {
+          setIsUploadComplete(true); // Mark upload as complete when it reaches 100%
+        }
       },
       (error) => {
         setImageFileUploadError(
@@ -59,6 +77,7 @@ const DashProfile = () => {
         setImageFile(null);
         setImageFileUrl(null);
         setImageFileUploading(false);
+        setIsUploadComplete(false);
       },
       () => {
         getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
@@ -87,12 +106,45 @@ const DashProfile = () => {
           className="relative w-32 h-32 self-center cursor-pointer shadow-md overflow-hidden rounded-full"
           onClick={() => filePickerRef.current.click()}
         >
+          {imageFileUploadProgress && (
+            <CircularProgressbar
+              value={imageFileUploadProgress || 0}
+              text={isUploadComplete ? "Done" : `${imageFileUploadProgress}%`}
+              strokeWidth={5}
+              styles={{
+                root: {
+                  width: "100%",
+                  height: "100%",
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                },
+                path: {
+                  stroke: isUploadComplete
+                    ? "#3ec74e"
+                    : `rgba(62, 152, 199, ${imageFileUploadProgress / 100})`,
+                },
+                text: {
+                  fill: isUploadComplete ? "green" : "#3e98c7",
+                  fontWeight: "bold",
+                },
+              }}
+            />
+          )}
           <img
             src={imageFileUrl || currentUser.profilePicture}
             alt="user"
-            className="rounded-full w-full h-full object-cover border-8 border-[lightgray]"
+            className={`rounded-full w-full h-full object-cover border-8 border-[lightgray] ${
+              imageFileUploadProgress &&
+              imageFileUploadProgress < 100 &&
+              "opacity-60"
+            }`}
           />
         </div>
+        {imageFileUploadError && (
+          <Alert color="failure">{imageFileUploadError}</Alert>
+        )}
+
         <TextInput
           type="text"
           id="username"
