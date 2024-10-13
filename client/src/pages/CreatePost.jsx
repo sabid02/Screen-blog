@@ -86,9 +86,8 @@ const CreatePost = () => {
       console.log("Data received:", data);
 
       setPublishError(null);
-      setFormData({}); // Reset form data on successful submission
-      // Optionally navigate to a different page
-      navigate("/");
+      setFormData({});
+      navigate(`/post/${data.slug}`);
     } catch (error) {
       console.error("Error during submission:", error);
       setPublishError("An error occurred while publishing the post.");
