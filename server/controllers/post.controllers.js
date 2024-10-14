@@ -70,3 +70,24 @@ export const getposts = async (req, res, next) => {
     next(error);
   }
 };
+
+export const deletepost = async (req, res, next) => {
+  try {
+    // Check if the user is an admin or the owner of the post
+    if (!req.user.isAdmin && req.user.id !== req.params.userId) {
+      return next(errorHandler(403, "You are not allowed to delete posts"));
+    }
+
+    // Check if the post exists before attempting to delete
+    const post = await Post.findById(req.params.postId);
+    if (!post) {
+      return next(errorHandler(404, "Post not found"));
+    }
+
+    // Delete the post
+    await Post.findByIdAndDelete(req.params.postId);
+    res.status(200).json("The post has been deleted");
+  } catch (error) {
+    next(error);
+  }
+};
