@@ -1,12 +1,46 @@
-import { Button, Textarea, TextInput } from "flowbite-react";
-import React, { useState } from "react";
+import { Alert, Button, Modal, TextInput, Textarea } from "flowbite-react";
+import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { HiOutlineExclamationCircle } from "react-icons/hi";
 
 const CommentSection = ({ postId }) => {
   const { currentUser } = useSelector((state) => state.user);
   const [comment, setComment] = useState("");
-  const handleSubmit = async (e) => {};
+  const [commentError, setCommentError] = useState(null);
+  const [comments, setComments] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [commentToDelete, setCommentToDelete] = useState(null);
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (comment.length > 200) {
+      return;
+    }
+    try {
+      const res = await fetch("/server/comment/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content: comment,
+          postId,
+          userId: currentUser._id,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setComment("");
+        setCommentError(null);
+        setComments([data, ...comments]);
+      }
+    } catch (error) {
+      setCommentError(error.message);
+    }
+  };
+
   return (
     <div className="max-w-2xl mx-auto w-full">
       {currentUser ? (
